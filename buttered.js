@@ -145,6 +145,7 @@ let infoBox;
 let cameraOffset = {x:0, y:0};
 
 function render() {
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.fillStyle = "#111111";
     ctx.rect(0,0, canvas.width, canvas.height);
