@@ -1,12 +1,23 @@
 console.log("frt");
 
 let ACols = [
-    "#333333",
-    "#3c8ee7",
-    "#f4e46a",
-    "#deb37d",
-    "#b05c6f",
-    "#68a941"
+    "#111111",
+    "#F7E26B",
+    "#31A2F2",
+    "#A3CE27",
+    "#BE2633",
+    "#E06F8B",
+    "#EB8931",
+    "#A46422",
+    "#493C2B",
+    "#2F484E",
+    "#44891A",
+    "#1B2632",
+    "#005784",
+    "#9D9D9D",
+    "#B2DCEF",
+    "#FFFFFF",
+    "#000000",
 ];
 
 let Tools = {
@@ -17,7 +28,7 @@ let Tools = {
 }
 
 window.onload = function () {
-
+    infoBox = document.getElementById("infoPanel");
     canvas = document.getElementById("mapCanvas");
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
@@ -28,21 +39,28 @@ window.onload = function () {
 
         if (tool == Tools.Brush) {
             addPoint(point(mousePos.x, mousePos.y), ctrlHeld?0:curSector);
-            render();
         }
-
+        
         if (tool == Tools.Shape) {
-            if (mouseDown) {
-                updateLines(tilePos.x, tilePos.y);
-            }
+            updateLines(tilePos.x, tilePos.y);
         }
+        render();
     }
 
     canvas.onmousedown = function(e) {
         mouseDown = true;
         if (tool == Tools.Brush) {
             // curSector = [1,2,3,4][Math.floor(Math.random()*4)];
+        } 
+
+        if (tool == Tools.Select) {
+            selectSector = hoverSector;
+        } else {
+            selectSector = -1;
         }
+
+        render();
+        updateInfo();
     }
 
     canvas.onmouseup = function(e) {
@@ -52,6 +70,7 @@ window.onload = function () {
     canvas.onmousemove = function(e) {
         mousePos = mouseToGridPos(e.offsetX, e.offsetY);
         tilePos = mouseToGridPos(e.offsetX - zoom/2, e.offsetY - zoom/2);
+        hoverSector = getPoint(point(mousePos.x, mousePos.y));
 
         if (tool == Tools.Brush) {
             if (mouseDown) {
@@ -76,12 +95,18 @@ window.onload = function () {
     }
 
     document.onkeydown = function(e) {
-        console.log(e.key);
+        // console.log(e.key);
         if (e.key == "Control" || e.key == "Meta") {
             ctrlHeld = true;
         }
 
         if (e.key == " ") spaceHeld = true;
+        if (e.key == "d") cameraOffset.x -= 1;
+        if (e.key == "a") cameraOffset.x += 1;
+        if (e.key == "w") cameraOffset.y += 1;
+        if (e.key == "s") cameraOffset.y -= 1;
+
+        render();
     }
 
     document.onkeyup = function(e) {
@@ -91,9 +116,16 @@ window.onload = function () {
 
         if (e.key == " ") spaceHeld = false;
     }
+
+    window.onresize = function() {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        render();
+    }
     
     initData();
     render();
+    updateInfo();
 }
 
 let curSector = 1;
@@ -105,8 +137,12 @@ var tilePos = {x:-100, y:-100};
 var mouseDown = false;
 var ctrlHeld = false;
 var spaceHeld = false;
-var numSectors = 5;
+var numSectors = 2;
 let tool = Tools.Brush;
+let hoverSector = -1;
+let selectSector = -1;
+let infoBox;
+let cameraOffset = {x:0, y:0};
 
 function render() {
     ctx.beginPath();
@@ -118,7 +154,7 @@ function render() {
     
     for (let point of mapData.keys()) {
         ctx.fillStyle = ACols[getPoint(point)];
-        let p = readPoint(point);
+        let p = viewPoint(point);
         // console.log(p);
         ctx.beginPath();
         ctx.ellipse(p.x * zoom, p.y * zoom, 2, 2, 0, 0, 360);
@@ -129,21 +165,21 @@ function render() {
     if (tool == Tools.Brush) {
         ctx.fillStyle = "#d97d3c";
         ctx.beginPath();
-        ctx.ellipse(mousePos.x * zoom, mousePos.y * zoom, 4, 4, 0, 0, 360);
+        ctx.ellipse((cameraOffset.x + mousePos.x) * zoom, (cameraOffset.y + mousePos.y) * zoom, 4, 4, 0, 0, 360);
         ctx.fill();
     }
 
     if (tool == Tools.Eraser) {
         ctx.strokeStyle = "#d97d3c";
         ctx.beginPath();
-        ctx.ellipse(mousePos.x * zoom, mousePos.y * zoom, 6, 6, 0, 0, 360);
+        ctx.ellipse((cameraOffset.x + mousePos.x) * zoom, (cameraOffset.y + mousePos.y) * zoom, 6, 6, 0, 0, 360);
         ctx.stroke();
     }
 
     if (tool == Tools.Shape) {
         ctx.strokeStyle = "#ffffff88";
         ctx.beginPath();
-        ctx.rect(tilePos.x * zoom, tilePos.y * zoom, zoom, zoom);
+        ctx.rect((cameraOffset.x + tilePos.x) * zoom, (cameraOffset.y + tilePos.y) * zoom, zoom, zoom);
         ctx.stroke();
     }
 
@@ -173,10 +209,25 @@ function render() {
     // }
 
     ctx.strokeStyle = "#ffffff";
+
+
     for (let l = 0; l < numSectors; l++) {
+        if (tool == Tools.Select) {
+            if (hoverSector == l) {
+                ctx.strokeStyle = "#FFF";
+            } else {
+                ctx.strokeStyle = "#999";
+            }
+            if (selectSector == l) {
+                ctx.lineWidth = 2;
+            } else {
+                ctx.lineWidth = 1;
+            }
+
+        }
         for (let point of linesData[l].keys()) {
             let line = linesData[l].get(point);
-            let p = readPoint(point);
+            let p = viewPoint(point);
             for(var i = 0; i < line.length; i+= 2) {
                 let x1 = line[i].x + p.x;
                 let y1 = line[i].y + p.y;
@@ -190,6 +241,39 @@ function render() {
         }
     }
 }
+
+function updateInfo() {
+    infoBox.innerHTML = tool;
+    if (tool == Tools.Select) {
+        infoBox.innerHTML = "Sector! "+selectSector;
+    }
+
+    if (tool == Tools.Brush) {
+        let title = document.createElement("p");
+        title.innerHTML = "Layer:";
+        for (let i = 1; i < numSectors; i++) {
+            let button = document.createElement("button");
+            button.className = curSector == i?"layerButtonActive":"layerButton";
+            button.style.background = ACols[i];
+            button.onclick = function () {
+                curSector = i;
+                updateInfo();
+            }
+            infoBox.appendChild(button);
+        }
+
+        let button = document.createElement("button");
+        button.className = "layerAddButton";
+        button.onclick = function () {
+            numSectors += 1;
+            linesData[numSectors -1] = new Map();
+            updateInfo();
+        }
+        button.innerHTML = "+";
+        infoBox.appendChild(button);
+    }
+}
+
 
 function initData() {
     mapData = new Map();
@@ -213,11 +297,19 @@ function readPoint(point)
     };
 }
 
+function viewPoint(point)
+{
+    let p = readPoint(point);
+    p.x += cameraOffset.x;
+    p.y += cameraOffset.y;
+    return p;
+}
+
 function mouseToGridPos(x, y)
 {
     x /= zoom;
     y /= zoom;
-    return {x:Math.round(x),y:Math.round(y)};
+    return {x:Math.round(x) - cameraOffset.x,y:Math.round(y) - cameraOffset.y};
 }
 
 function addPoint(point, value)
@@ -231,7 +323,7 @@ function addPoint(point, value)
 
 function updateLines(x, y)
 {
-    for (let l = 0; l < numSectors; l++) {
+    for (let l = 1; l < numSectors; l++) {
         var sqrIndex = 0;
         if (getPoint(point(x,y)) != l) sqrIndex += 1;
         if (getPoint(point(x+1,y)) != l) sqrIndex += 2;
