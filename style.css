@@ -1,8 +1,75 @@
 body {
-    background-color: #4e5159;
+    background-color: #826369;
+}
+
+.mainBody {
+    display: grid;
+    grid-template-columns: 10% auto 70% auto 10%;
+    grid-template-rows: 100px auto;
+    font-family: 'Roboto', sans-serif;
+    height: 100%;
+    text-align: center;
 }
 
 .canvasDiv {
     text-align: center;
-    padding-top: 5%;
+    grid-row: 2;
+    grid-column: 3;
 }
+
+#mapCanvas {
+    width: 100%;
+    height: 100%;
+}
+
+div.tools {
+    grid-row: 2;
+    grid-column: 2;
+    display: grid;
+    grid-auto-rows: 50px;
+    grid-template-columns: 10px, 50px;
+}
+
+div.title {
+    grid-row: 1;
+    grid-column: 3;
+    text-align: center;
+    font-family: 'Pacifico', cursive;
+    font-size: 60px;
+    filter: drop-shadow(5px 5px 2px #000);
+    color: antiquewhite;
+}
+
+div.info {
+    grid-row: 2;
+    grid-column: 4;
+    color: antiquewhite;
+    filter: drop-shadow(0px 0px 1px #000);
+    font-size: 20px;
+}
+
+button.toolButton {
+    background: none;
+    border-color:antiquewhite;
+    border-style: solid;
+    width:50px;
+    height:50px;
+    padding: 1px;
+    grid-column: 2;
+    filter: drop-shadow(0px 0px 3px #000);
+}
+
+button.toolButton:hover {
+    background-color: "white";
+    padding:2px;
+}
+
+button.toolButton:active {
+    padding:4px;
+}
+
+img.toolIcon {
+    width: 100%;
+    filter: drop-shadow(0px 0px 1px #000);
+}
+

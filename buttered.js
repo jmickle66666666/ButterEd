@@ -1,20 +1,48 @@
 console.log("frt");
 
+let ACols = [
+    "#333333",
+    "#3c8ee7",
+    "#f4e46a",
+    "#deb37d",
+    "#b05c6f",
+    "#68a941"
+];
+
+let Tools = {
+    Brush : "brush",
+    Eraser : "eraser",
+    Select : "select",
+    Shape : "shape"
+}
+
 window.onload = function () {
 
     canvas = document.getElementById("mapCanvas");
-    canvas.width = 800;
-    canvas.height = 600;
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
     ctx = canvas.getContext("2d");
     canvas.onclick = function(e) {
-        // console.log(e.offsetX, e.offsetY);
-        let mp = mouseToGridPos(e.offsetX, e.offsetY);
-        addPoint(point(mp.x, mp.y), ctrlHeld?0:1);
-        render();
+        mousePos = mouseToGridPos(e.offsetX, e.offsetY);
+        tilePos = mouseToGridPos(e.offsetX - zoom/2, e.offsetY - zoom/2);
+
+        if (tool == Tools.Brush) {
+            addPoint(point(mousePos.x, mousePos.y), ctrlHeld?0:curSector);
+            render();
+        }
+
+        if (tool == Tools.Shape) {
+            if (mouseDown) {
+                updateLines(tilePos.x, tilePos.y);
+            }
+        }
     }
 
     canvas.onmousedown = function(e) {
         mouseDown = true;
+        if (tool == Tools.Brush) {
+            // curSector = [1,2,3,4][Math.floor(Math.random()*4)];
+        }
     }
 
     canvas.onmouseup = function(e) {
@@ -23,37 +51,62 @@ window.onload = function () {
 
     canvas.onmousemove = function(e) {
         mousePos = mouseToGridPos(e.offsetX, e.offsetY);
+        tilePos = mouseToGridPos(e.offsetX - zoom/2, e.offsetY - zoom/2);
 
-        if (mouseDown) {
-            let mp = mouseToGridPos(e.offsetX, e.offsetY);
-            addPoint(point(mp.x, mp.y), ctrlHeld?0:1);
+        if (tool == Tools.Brush) {
+            if (mouseDown) {
+                let mp = mouseToGridPos(e.offsetX, e.offsetY);
+                addPoint(point(mp.x, mp.y), ctrlHeld?0:curSector);
+            }
         }
 
+        if (tool == Tools.Eraser) {
+            if (mouseDown) {
+                let mp = mouseToGridPos(e.offsetX, e.offsetY);
+                addPoint(point(mp.x, mp.y), 0);
+            }
+        }
+
+        if (tool == Tools.Shape) {
+            if (mouseDown) {
+                updateLines(tilePos.x, tilePos.y);
+            }
+        }
         render();
     }
 
     document.onkeydown = function(e) {
+        console.log(e.key);
         if (e.key == "Control" || e.key == "Meta") {
             ctrlHeld = true;
         }
+
+        if (e.key == " ") spaceHeld = true;
     }
 
     document.onkeyup = function(e) {
         if (e.key == "Control" || e.key == "Meta") {
             ctrlHeld = false;
         }
+
+        if (e.key == " ") spaceHeld = false;
     }
     
     initData();
     render();
 }
 
+let curSector = 1;
 var zoom = 40;
 var canvas;
 var ctx;
 var mousePos = {x:-100, y:-100};
+var tilePos = {x:-100, y:-100};
 var mouseDown = false;
 var ctrlHeld = false;
+var spaceHeld = false;
+var numSectors = 5;
+let tool = Tools.Brush;
 
 function render() {
     ctx.beginPath();
@@ -63,13 +116,8 @@ function render() {
 
     
     
-    // console.log("hi?");
     for (let point of mapData.keys()) {
-        if (isPoint(point)) {
-            ctx.fillStyle = "#d97d3c";
-        } else {
-            ctx.fillStyle = "#333333";
-        }
+        ctx.fillStyle = ACols[getPoint(point)];
         let p = readPoint(point);
         // console.log(p);
         ctx.beginPath();
@@ -77,10 +125,36 @@ function render() {
         ctx.fill();
     }
 
-    ctx.fillStyle = "#d97d3c";
-    ctx.beginPath();
-    ctx.ellipse(mousePos.x * zoom, mousePos.y * zoom, 4, 4, 0, 0, 360);
-    ctx.fill();
+    // tool highlight
+    if (tool == Tools.Brush) {
+        ctx.fillStyle = "#d97d3c";
+        ctx.beginPath();
+        ctx.ellipse(mousePos.x * zoom, mousePos.y * zoom, 4, 4, 0, 0, 360);
+        ctx.fill();
+    }
+
+    if (tool == Tools.Eraser) {
+        ctx.strokeStyle = "#d97d3c";
+        ctx.beginPath();
+        ctx.ellipse(mousePos.x * zoom, mousePos.y * zoom, 6, 6, 0, 0, 360);
+        ctx.stroke();
+    }
+
+    if (tool == Tools.Shape) {
+        ctx.strokeStyle = "#ffffff88";
+        ctx.beginPath();
+        ctx.rect(tilePos.x * zoom, tilePos.y * zoom, zoom, zoom);
+        ctx.stroke();
+    }
+
+
+
+    // if (tool == Tools.Shape) {
+    //     ctx.strokeStyle = "#d97d3c";
+    //     ctx.beginPath();
+    //     ctx.ellipse(mousePos.x * zoom, mousePos.y * zoom, 6, 6, 0, 0, 360);
+    //     ctx.stroke();
+    // }
 
     // ctx.strokeStyle = "#999999";
     // for (let point of linesData.keys()) {
@@ -99,27 +173,31 @@ function render() {
     // }
 
     ctx.strokeStyle = "#ffffff";
-    for (let point of linesData.keys()) {
-        let line = linesData.get(point);
-        let p = readPoint(point);
-        for(var i = 0; i < line.length; i+= 2) {
-            let x1 = line[i].x + p.x;
-            let y1 = line[i].y + p.y;
-            let x2 = line[i+1].x + p.x;
-            let y2 = line[i+1].y + p.y;
-            ctx.beginPath();
-            ctx.moveTo(x1 * zoom, y1 * zoom);
-            ctx.lineTo(x2 * zoom, y2 * zoom);
-            ctx.stroke();
+    for (let l = 0; l < numSectors; l++) {
+        for (let point of linesData[l].keys()) {
+            let line = linesData[l].get(point);
+            let p = readPoint(point);
+            for(var i = 0; i < line.length; i+= 2) {
+                let x1 = line[i].x + p.x;
+                let y1 = line[i].y + p.y;
+                let x2 = line[i+1].x + p.x;
+                let y2 = line[i+1].y + p.y;
+                ctx.beginPath();
+                ctx.moveTo(x1 * zoom, y1 * zoom);
+                ctx.lineTo(x2 * zoom, y2 * zoom);
+                ctx.stroke();
+            }
         }
     }
 }
 
 function initData() {
     mapData = new Map();
-    linesData = new Map();
-    curveTiles();
-    fillTiles();
+    linesData = [];
+    for (let l = 0; l < numSectors; l++) {
+        linesData[l] = new Map();
+    }
+    standardTiles();
 }
 
 function point(x, y)
@@ -153,14 +231,16 @@ function addPoint(point, value)
 
 function updateLines(x, y)
 {
-    var sqrIndex = 0;
-    if (isPoint(point(x,y))) sqrIndex += 1;
-    if (isPoint(point(x+1,y))) sqrIndex += 2;
-    if (isPoint(point(x,y+1))) sqrIndex += 4;
-    if (isPoint(point(x+1,y+1))) sqrIndex += 8;
-    var lines = squaresData[sqrIndex].slice();
-
-    linesData.set(point(x,y), lines);
+    for (let l = 0; l < numSectors; l++) {
+        var sqrIndex = 0;
+        if (getPoint(point(x,y)) != l) sqrIndex += 1;
+        if (getPoint(point(x+1,y)) != l) sqrIndex += 2;
+        if (getPoint(point(x,y+1)) != l) sqrIndex += 4;
+        if (getPoint(point(x+1,y+1)) != l) sqrIndex += 8;
+        var lines = squaresData[sqrIndex].slice();
+    
+        linesData[l].set(point(x,y), lines);
+    }
 }
 
 function isPoint(point)
@@ -169,6 +249,13 @@ function isPoint(point)
     if (p == undefined) return false;
     if (p == 0) return false;
     return true;
+}
+
+function getPoint(point)
+{
+    let p = mapData.get(point);
+    if (p == undefined) return -1;
+    return p;
 }
 
 var mapData;
@@ -182,6 +269,7 @@ function standardTiles() {
     squaresData[3] = [ rightPoint, leftPoint ];
     squaresData[7] = [ rightPoint, bottomPoint ];
     squaresData[15] = [];
+    fillTiles();
 }
 
 function squareTiles() {
@@ -190,6 +278,7 @@ function squareTiles() {
     squaresData[3] = [ rightPoint, leftPoint ];
     squaresData[7] = [ rightPoint, centerPoint, centerPoint, bottomPoint ];
     squaresData[15] = [];
+    fillTiles();
 }
 
 function curveTiles() {
@@ -198,6 +287,7 @@ function curveTiles() {
     squaresData[3] = [ rightPoint, leftPoint ];
     squaresData[7] = [ rightPoint, sq11, sq11, bottomPoint ];
     squaresData[15] = [];
+    fillTiles();
 }
 
 var topPoint = {x:0.5, y:0};

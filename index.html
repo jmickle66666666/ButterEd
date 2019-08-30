@@ -1,11 +1,25 @@
 <meta charset="utf-8">
 <head>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css?family=Pacifico|Roboto:500&display=swap" rel="stylesheet"> 
 </head>
 <body>
-    <div class="canvasDiv">
 
-        <canvas id="mapCanvas"></canvas>
+    <div class= "mainBody">
+        <div class="title">ButterEd</div>
+        <div class="tools"> 
+            <button class="toolButton" id="brushTool" onclick="tool = Tools.Brush;"> <image src="assets/brush.png" class="toolIcon"></image></input>
+            <button class="toolButton" id="selectTool" onclick="tool = Tools.Select;"> <image src="assets/select.png" class="toolIcon"></image></input>
+            <button class="toolButton" id="eraserTool" onclick="tool = Tools.Eraser;"> <image src="assets/eraser.png" class="toolIcon"></image></input>
+
+            <button class="toolButton" onclick="standardTiles(); tool = Tools.Shape;"><image src="assets/shapeDiag.png" class="toolIcon"></image></button>
+            <button class="toolButton" onclick="curveTiles(); tool = Tools.Shape;"><image src="assets/shapeCurve.png" class="toolIcon"></image></button>
+            <button class="toolButton" onclick="squareTiles(); tool = Tools.Shape;"><image src="assets/shapeSquare.png" class="toolIcon"></image></button>
+        </div>
+        <div class="canvasDiv">
+            <canvas id="mapCanvas"></canvas>
+        </div>
+        <div class="info">INFO</div>
     </div>
     <script src="buttered.js"></script>
 </body>
